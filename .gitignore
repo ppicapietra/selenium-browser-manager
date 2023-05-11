@@ -1,0 +1,15 @@
+# Compiled python files
+__pycache__/
+*.pyc
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# IDE specific files
+.idea/
+.vscode/
+
+# Logs
+*.log
