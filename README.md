@@ -1,47 +1,35 @@
-# directory-crawlers
-This repository contains the scraping of the businesses of each one of the states in individual folders.
-It also has an installation guide with the necessary tools to set the environment and be able to scrape.
+# README
 
-## Install the following tools for setup local enviroment:
-1. Install Python 3.10.6 (AWS version)
-2. Install required python dependencies, with pip or pip3 (python package manager system):
+## Description
 
-    - Scrapy:
-        > pip install scrapy
+The Selenium Browser Manager project is a Python package designed to simplify common operations in web scraping activities using Selenium. It aims to provide a convenient interface for automating browser actions while also offering access to more complex operations when needed and also a generation and managment of a dictionary for use in search engines.
 
-        > pip install nltk
+## Key features
 
-    - Selenium:
-        > pip install selenium
+- **Simplified Automation:** The BrowserManager module streamlines the process of interacting with web pages by abstracting away the complexities of browser automation. It provides a high-level API that allows you to perform common tasks with ease, such as navigating to URLs, filling forms, clicking elements, and extracting data.
 
-    - Web driver:
-        > pip install webdriver-manager
-    - Pandas:
-        > pip install pandas
-    - Usadress:
-        > pip install usaddress
-    - Speach-recognition:
-        > pip install SpeechRecognition
-    - pydub para manipulación de audio:
-        > pip install pydub
+- **Safe Validation:** The BrowserManager module incorporates internal validation mechanisms to ensure a safer scraping experience. It handles various scenarios that commonly arise during web scraping, such as detecting and handling pop-ups, waiting for page elements to load, and managing timeouts. This reduces the need for manual validation and error handling in your scraping code.
 
-    - ffmepg drivers on OS:
-        - MacOS:
-            > brew install ffmpeg
-        - Linux:
-            > apt get install ffmpeg
-3. Guide for scrapy installation:
-    * https://docs.scrapy.org/en/latest/intro/install.html
-    * Scraping example: https://oxylabs.io/blog/scrapy-web-scraping-tutorial
-4. Guide for selenium installation:
-    * https://pypi.org/project/selenium/
-    * Scraping example: https://towardsdatascience.com/how-to-use-selenium-to-web-scrape-with-example-80f9b23a843a
-5. Puppeteer is a Node.js library, therefore it can be installed by your npm package manager. Install nodejs v18.14.2 (AWS version):
-    * npm i puppeteer
-6. Guide for Puppeteer:
-    * https://pptr.dev/
-    * Scraping example: https://www.digitalocean.com/community/tutorials/how-to-scrape-a-website-using-node-js-and-puppeteer
-7. Install ProtonVPN Client:
-    * pip install protonvpn
-    * Create free account on https://protonvpn.com/
-    * Use the credentials on https://account.protonvpn.com/account for setup your client, not your user and password for login, they are diferents credentials.
+- **Flexibility and Control:** While offering simplified automation, the BrowserManager module still provides access to the underlying Selenium functionality. This means you can leverage the full power of Selenium when you need to perform more advanced operations or customize the scraping process to your specific requirements.
+
+- **Dictionary generator:** The DictionaryManager module offers a simple way to generate a dictionary to use in search engines, and extend any of them when you need less results matches.
+
+## Install
+
+Install the Selenium Browser Manager package by running the following command:
+> pip install git+<https://github.com/ppicapietra/selenium-browser-manager.git>
+
+## Getting started
+
+
+## Contributing
+
+Contributions to the Selenium Browser Manager project are welcome! If you encounter any issues, have suggestions for improvements, or would like to add new features, please submit a pull request on the GitHub repository. Make sure to follow the project's code of conduct and guidelines.
+
+## License
+
+This project is licensed under the MIT License. See the [LICENCE](https://github.com/ppicapietra/selenium-browser-manager/blob/main/LICENSE "License details") file for more information.
+
+## Acknowledgements
+
+The Selenium Browser Manager project would not have been possible without the contributions and inspiration from various open source libraries and the wider web scraping community. We would like to express our gratitude to all those who have shared their knowledge and expertise to make this project a reality.

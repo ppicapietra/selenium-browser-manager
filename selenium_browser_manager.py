@@ -4,10 +4,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.keys import Keys
 
-from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException, ElementNotInteractableException
+from selenium.common.exceptions import TimeoutException, ElementClickInterceptedException, NoSuchElementException, ElementNotInteractableException, InvalidElementStateException
 
 import re
 import os
+import time
 import random
 import requests
 import subprocess
@@ -87,7 +88,6 @@ class BrowserManager:
         # previous tab handler
         self._previous_tab_handler = None
 
-    
     # statics methods
 
     @staticmethod
@@ -100,6 +100,14 @@ class BrowserManager:
         elif css_regex.search(selector_string):
             return By.CSS_SELECTOR
             
+    @property
+    def EC(self):
+        return EC
+
+    @property
+    def driver(self) -> webdriver.Chrome:
+        return self._browser
+    
     @property
     def timeout(self):
         return self._timeout
@@ -115,14 +123,6 @@ class BrowserManager:
     # instance methods
 
     ## public methods
-    def get_webdriver_instance(self) -> webdriver.Chrome:
-        """
-        Returns the webdriver.Chrome object associated with the class instance.
-        
-        Returns:
-            webdriver.Chrome: The webdriver.Chrome object associated with the class instance.
-        """
-        return self._browser
 
     def close_current_tab(self):
         self._browser.close()
@@ -143,7 +143,7 @@ class BrowserManager:
         
         self._browser.execute_script(f'window.history.go({steps})') 
 
-    def click_on(self, element_or_selector: Union[str, WebElement]):
+    def click(self, element_or_selector: Union[str, WebElement]):
         """Click on the element specified by the given selector.
 
         Args:
@@ -186,7 +186,41 @@ class BrowserManager:
             # finally, if we open a new tab with current config, go to the new tab
             if new_tab_on_click:
                 self._switch_to_new_window()
+   
+    def fill(self, element_or_selector: Union[str, WebElement], text_to_send: str):
+        """type on the element specified by the given selector.
 
+        Args:
+            element_or_selector (Union[str, WebElement]): The selector string for the element or a WebElement where the text has to be entered.
+
+        Raises:
+            InvalidElementStateException: If the element is not writable.
+            TypeError: If the element is not the correct type to receive text.
+            NoSuchElementException: If the element can't be found.
+            TimeoutException: If the element can't be found within timeout period.
+
+        Returns:
+            None
+        """
+
+        try:
+            if isinstance(element_or_selector, str):
+                selector_type = BrowserManager._get_selector_type(element_or_selector)
+                element = self._wait.until(EC.element_to_be_clickable((selector_type, element_or_selector)))
+                # put element in visible area
+                self._browser.execute_script("arguments[0].scrollIntoView();", element)
+                element.send_keys(text_to_send)
+            else:
+                element = element_or_selector
+                self._browser.execute_script("arguments[0].scrollIntoView();", element)
+                element.send_keys(text_to_send)
+
+        except ElementNotInteractableException:
+            raise TypeError(f"WebElement type is wrong. Type of WebElement selected: {type(element)}")
+        except InvalidElementStateException:
+            # element could no be filled
+            raise InvalidElementStateException("Element is not receiving text inputs")
+        
     def get(self, selector: str, results_in_list: bool = False) -> Union[WebElement, list]:
         """
         Finds and returns the element that matches the given selector (if only one matched) or a collection of them.
@@ -255,6 +289,18 @@ class BrowserManager:
 
         # Execute supplied JS code
         self._browser.execute_script(script)
+
+    def go(self, url: str) -> None:
+        """
+        Load the url on the current tab.
+
+        Args:
+            url (str): The url to load on the current tab
+
+        Returns:
+            None
+        """
+        self._browser.get(url)
 
     def switch_to_tab(self, tab_id:Union[str, int]):
         """
@@ -333,7 +379,7 @@ class BrowserManager:
         Resolves a reCAPTCHA on the current page.
 
         Args:
-            captcha_version (str, optional): The version of the reCAPTCHA to resolve. Defaults to "V2".
+            captcha_version (str, optional): The version of the reCAPTCHA to resolve. Defaults to "google-v2".
 
         Returns:
             bool: True if the reCAPTCHA was successfully resolved, False otherwise.
@@ -341,48 +387,129 @@ class BrowserManager:
         Raises:
             None
         """
+        # change timeout value and restore at the end
+        original_timeout_value = self._timeout
+        self.timeout = 1
 
-        if captcha_version == 'V2':
+        logging.info("Resolving captcha...")
 
-            ############################
-            ######## CAPTCHA v2 ########
-            ############################
+        if captcha_version == 'google-v2':
+
+            ###################################
+            ######## GOOGLE CAPTCHA v2 ########
+            ###################################
             
-            iframes_list = self.get("iframe")
-            iframes_length = len(iframes_list)
+            # selectors
+            # reCaptcha_checkbox_selector = '.ctp-checkbox-container input[type="checkbox"]' # cloudflare
+            
+            reCaptcha_checkbox_class_name = "recaptcha-checkbox-unchecked"
+            reCaptcha_audio_button_id_name = "recaptcha-audio-button"
+            audio_file_link_class_name = 'rc-audiochallenge-tdownload-link'
 
-            if iframes_length > 0: # if there are iframes to switch later
-                audio_btn_index = -1
-                for index in range(iframes_length-1, -1, -1):
-                    self._browser.switch_to.default_content() # we asure that we are in the main context
-                    iframes_list = self.get("iframe")
-                    current_iframe = iframes_list[index]
-                    self._browser.switch_to.frame(current_iframe)
-                    try:
-                        audio_btn = self.get("#recaptcha-audio-button") or self.get("#recaptcha-anchor")
-                        audio_btn.click()
-                        # audioBtnFound = True
-                        audio_btn_index = index
-                        break
-                    except Exception:
-                        logging.info(f"NO CAPTCHA DETECTED")
-                        return True
-                    
-                # Download,save and convert to text audio captcha
-                captcha_audio_link = ""
+            reCaptcha_checkbox_selector = f'.{reCaptcha_checkbox_class_name}' # google
+            reCaptcha_audio_button_selector = f"#{reCaptcha_audio_button_id_name}"
+            reCaptcha_audio_button_alt_selector = '#recaptcha-anchor'
+            audio_file_link_selector = f'.{audio_file_link_class_name}'
+            reCaptcha_modal_header_selector = '.rc-doscaptcha-header-text'
+            reCaptcha_answer_text_input_selector = '#audio-response'
+
+            # start doing magic
+            self._browser.switch_to.default_content()
+            try:
+                iframes_list = self.get("iframe", True)
+            except TimeoutException:
+                # there is no captcha
+                return True
+            
+            reCaptcha_checkbox_triggered = False
+            reCaptcha_iframe_founded = False
+            # looking for a checkbox that triggers captcha
+            for index, current_iframe in enumerate(reversed(iframes_list)):
+                # we get "inside" the iframe
                 try:
-                    captcha_audio_link = self.get(".rc-audiochallenge-tdownload-link").get_attribute('href')
-                    logging.info("getting captcha audio file...")
-                except TimeoutException:
-                    ban_notification = self.get(".rc-doscaptcha-header-text")
-                    if isinstance(ban_notification, WebElement):
-                        banned_phrases = ["try again later", "vuelve a intentarlo"]
-                        are_we_banned = any(phrase in ban_notification.text.lower() for phrase in banned_phrases)
-                        if are_we_banned:
-                            logging.info(f"Seems that you've been banned. Time to sit and wait")
-                            return False
+                    self._browser.switch_to.default_content()
+                    self._browser.switch_to.frame(current_iframe)
+                except Exception:
+                    continue
+                
+                if reCaptcha_checkbox_class_name in self._browser.page_source:
+                    try:
+                        reCaptcha_checkbox = self.get(reCaptcha_checkbox_selector)
+                        self.click_on_element(reCaptcha_checkbox)
+                        reCaptcha_checkbox_triggered = True
+                    except Exception:
+                        pass
+
+            # here we assume we have a captcha modal opened
+            # looking for an audio button in captcha
+            if reCaptcha_checkbox_triggered:
+                # safe waiting until reCaptcha modal opened be available to work with
+                time.sleep(1)
+            self._browser.switch_to.default_content()
+            try:
+                iframes_list = self.get("iframe", True)
+            except TimeoutException:
+                # there is no captcha
+                return True
+            # iterating over existing iframes
+            for index, current_iframe in enumerate(reversed(iframes_list)):
+                try:
+                    self._browser.switch_to.default_content()
+                    self._browser.switch_to.frame(current_iframe)
+                except Exception:
+                    continue
                     
-                response = requests.get(captcha_audio_link, stream=True)
+                # is there an audio button option in this iframe?
+                if not reCaptcha_audio_button_id_name in self._browser.page_source and not reCaptcha_audio_button_alt_selector in self._browser.page_source:
+                    # try next iframe
+                    continue
+                else:
+                    reCaptcha_iframe_founded = True
+                    
+                try:
+                    # here we are "inside" the iframe founded as the captcha iframe
+                    try:
+                        audio_btn = self.get(reCaptcha_audio_button_selector)
+                    except TimeoutException:
+                        audio_btn = self.get(reCaptcha_audio_button_alt_selector)
+                    self.click_on_element(audio_btn)
+                    break
+                except Exception:
+                    # There is no reCaptcha
+                    pass
+                
+            if not reCaptcha_iframe_founded:
+                # no reCatptcha iframe founded
+                self.timeout = original_timeout_value
+                logging.info(f"NO CAPTCHA DETECTED")
+                return True
+            
+            # let's break it down those audios
+
+            # loop from here
+            # Download,save and convert to text audio captcha
+            keep_resolving = True
+            captcha_audio_link = None
+            while keep_resolving:
+                try:
+                    captcha_audio_link = self.get(audio_file_link_selector)
+                    captcha_audio_link_url = captcha_audio_link.get_attribute('href') if isinstance(captcha_audio_link, WebElement) else None
+                except TimeoutException:
+                    try:
+                        ban_notification = self.get(reCaptcha_modal_header_selector)
+                        if isinstance(ban_notification, WebElement):
+                            banned_phrases = ["try again later", "vuelve a intentarlo"]
+                            are_we_banned = any(phrase in ban_notification.text.lower() for phrase in banned_phrases)
+                            if are_we_banned:
+                                logging.info(f"Seems that you've been banned. Time to sit and wait")
+                                self.timeout = original_timeout_value
+                                return False
+                    except TimeoutException:
+                        pass
+                    keep_resolving = False
+                    break
+                
+                response = requests.get(captcha_audio_link_url, stream=True)
 
                 # save the audio file
                 file_name = f"bm_captcha_{random.randint(11111, 99999)}"
@@ -399,30 +526,57 @@ class BrowserManager:
                 with speechRecognition.AudioFile(f'{file_name}.wav') as source:
                     # listen for the data (load audio to memory)
                     audio_data = recognizer.record(source)
-                    try:
                     # recognize (convert from speech to text)
-                        captcha_text_recognized = recognizer.recognize_google(audio_data)
+                    try:
+                        audio_text_recognized = recognizer.recognize_google(audio_data)
                     except Exception:
+                        self.timeout = original_timeout_value
                         return False
                     # Send text to input response
-                    self._browser.switch_to.default_content()
-                    iframes_list = self.get("iframe")
-                    current_iframe = iframes_list[audio_btn_index]
-                    self._browser.switch_to.frame(current_iframe)
-                    recognized_text_input = self.get("#audio-response")
-                    recognized_text_input.send_keys(captcha_text_recognized)
-                    recognized_text_input.send_keys(Keys.ENTER)
-                logging.info("Deleting temporal files...")
+                    answer_text_input = self.get(reCaptcha_answer_text_input_selector)
+                    answer_text_input.send_keys(audio_text_recognized)
+                    answer_text_input.send_keys(Keys.ENTER)
+                logging.info(f"Captcha resolved")
                 try:
                     os.remove(f'{file_name}.mp3')
                 except OSError:
-                    logging.info(f"Try to delete file but it doesn't exist")
+                    pass
                 try:
                     os.remove(f'{file_name}.wav')
                 except OSError:
-                    logging.info(f"Try to delete file but it doesn't exist")
+                    pass
                 
-                # return to main context
+                # safe waiting until captcha modal window disappear, if no more captchas are shown
+                time.sleep(1)
+
                 self._browser.switch_to.default_content()
-                logging.info(f"Captcha resolved")
-                return True
+                try:
+                    iframes_list = self.get("iframe", True)
+                except TimeoutException:
+                    keep_resolving = False
+                    break
+
+                keep_resolving = False
+                # looking for audio link element in existing iframes
+                for index, current_iframe in enumerate(reversed(iframes_list)):
+                    try:
+                        self._browser.switch_to.default_content()
+                        self._browser.switch_to.frame(current_iframe)
+                    except Exception:
+                        # there is no captcha
+                        break
+                    if audio_file_link_class_name in self._browser.page_source and self.is_element_interactable(audio_file_link_selector):
+                        current_link_element = self.get(audio_file_link_selector)
+                        if current_link_element != captcha_audio_link:
+                            captcha_audio_link = current_link_element # ensuring the link element is not the last one
+                            keep_resolving = True
+                            break
+                    else:
+                        continue
+                if not keep_resolving:
+                    break
+                
+            # return to main context
+            self._browser.switch_to.default_content()
+            self.timeout = original_timeout_value
+            return True
