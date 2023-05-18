@@ -21,7 +21,6 @@ Install the Selenium Browser Manager package by running the following command:
 
 ## Getting started
 
-
 ## Contributing
 
 Contributions to the Selenium Browser Manager project are welcome! If you encounter any issues, have suggestions for improvements, or would like to add new features, please submit a pull request on the GitHub repository. Make sure to follow the project's code of conduct and guidelines.
