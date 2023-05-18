@@ -10,6 +10,7 @@ build/
 # IDE specific files
 .idea/
 .vscode/
+.DS_Store
 
 # Logs
 *.log
