@@ -179,7 +179,7 @@ class BrowserManager:
             element = element_or_selector
             try:
                 self._browser.execute_script("arguments[0].scrollIntoView();", element)
-                self._wait.until(lambda: element if element.is_displayed() and element.is_enabled() else False)
+                self._wait.until(lambda driver: element if element.is_displayed() and element.is_enabled() else False)
                 element.click()
             except TimeoutException or ElementClickInterceptedException:
                 self._browser.execute_script("arguments[0].click();", element)
