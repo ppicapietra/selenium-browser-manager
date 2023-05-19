@@ -109,6 +109,10 @@ class BrowserManager:
         return self._browser
     
     @property
+    def wait(self) -> WebDriverWait:
+        return self._wait
+    
+    @property
     def timeout(self):
         return self._timeout
 
@@ -175,18 +179,11 @@ class BrowserManager:
             element = element_or_selector
             try:
                 self._browser.execute_script("arguments[0].scrollIntoView();", element)
-                
-                # check if we have to do something with the target attribute
-                if self._force_links_target and element.tag_name == "a" and self._force_links_target == "_blank":
-                    new_tab_on_click = True
+                self._wait.until(lambda: element if element.is_displayed() and element.is_enabled() else False)
                 element.click()
-            except ElementClickInterceptedException:
+            except TimeoutException or ElementClickInterceptedException:
                 self._browser.execute_script("arguments[0].click();", element)
-
-            # finally, if we open a new tab with current config, go to the new tab
-            if new_tab_on_click:
-                self._switch_to_new_window()
-   
+                 
     def fill(self, element_or_selector: Union[str, WebElement], text_to_send: str):
         """type on the element specified by the given selector.
 
@@ -434,8 +431,7 @@ class BrowserManager:
                 
                 if reCaptcha_checkbox_class_name in self._browser.page_source:
                     try:
-                        reCaptcha_checkbox = self.get(reCaptcha_checkbox_selector)
-                        self.click_on_element(reCaptcha_checkbox)
+                        self.click(reCaptcha_checkbox_selector)
                         reCaptcha_checkbox_triggered = True
                     except Exception:
                         pass
@@ -472,7 +468,8 @@ class BrowserManager:
                         audio_btn = self.get(reCaptcha_audio_button_selector)
                     except TimeoutException:
                         audio_btn = self.get(reCaptcha_audio_button_alt_selector)
-                    self.click_on_element(audio_btn)
+
+                    self.click(audio_btn)
                     break
                 except Exception:
                     # There is no reCaptcha
