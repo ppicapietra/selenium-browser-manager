@@ -79,8 +79,7 @@ class BrowserManager:
             
             # config: time to wait before trigger timeoutException
             default_timeout = 30
-            if "timeout" in config:
-                self._timeout = config.get("timeout", default_timeout)
+            self._timeout = config.get("timeout", default_timeout)
      
         ## auxiliar objects
         # wait object
@@ -431,7 +430,8 @@ class BrowserManager:
                 
                 if reCaptcha_checkbox_class_name in self._browser.page_source:
                     try:
-                        self.click(reCaptcha_checkbox_selector)
+                        checkbox_trigger = self.get(reCaptcha_checkbox_selector)
+                        checkbox_trigger.click_safe()
                         reCaptcha_checkbox_triggered = True
                     except Exception:
                         pass
@@ -469,7 +469,7 @@ class BrowserManager:
                     except TimeoutException:
                         audio_btn = self.get(reCaptcha_audio_button_alt_selector)
 
-                    self.click(audio_btn)
+                    audio_btn.click_safe()
                     break
                 except Exception:
                     # There is no reCaptcha
