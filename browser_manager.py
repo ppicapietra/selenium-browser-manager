@@ -42,7 +42,9 @@ class BrowserManager:
 
         self._initial_url = initial_url
 
-        self._options = webdriver.ChromeOptions()
+        browserOptions = webdriver.ChromeOptions()
+        browserOptions = webdriver.ChromeOptions()
+        browserInitialArgs = {}
 
         ## browser props
         if config is not None:
@@ -50,32 +52,36 @@ class BrowserManager:
             window_props = config.get('window', None)
             if window_props:
                 for arg in window_props:
-                    self._options.add_argument(arg)
+                    browserOptions.add_argument(arg)
             # stablish general preferences to improve scrapping
-            self._options.add_argument('--lang=en-US')
-            self._options.add_argument('--blink-settings=imagesEnabled=false') # don't load images. Faster results
-            self._options.add_argument('--disable-popup-blocking') # allow new tabs
-            self._options.add_argument('--no-sandbox')
-            self._options.add_argument('--disable-dev-shm-usage')
-            self._options.add_argument('--disable-extensions')
-            self._options.add_argument('--disable-gpu')
-            self._options.add_argument('--disable-setuid-sandbox')
-            self._options.add_argument('--disable-web-security')
-            self._options.add_argument('--ignore-certificate-errors')
-            self._options.add_argument('--disable-infobars')
-            self._options.add_argument('--window-size=1920,1080')
-            self._options.add_argument('--start-maximized')
-            self._options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36')
+            browserOptions.add_argument('--lang=en-US')
+            browserOptions.add_argument('--blink-settings=imagesEnabled=true') # don't load images. Faster results
+            browserOptions.add_argument('--disable-popup-blocking') # allow new tabs
+            browserOptions.add_argument('--no-sandbox')
+            browserOptions.add_argument('--disable-dev-shm-usage')
+            browserOptions.add_argument('--disable-extensions')
+            browserOptions.add_argument('--disable-gpu')
+            browserOptions.add_argument('--disable-setuid-sandbox')
+            browserOptions.add_argument('--disable-web-security')
+            browserOptions.add_argument('--ignore-certificate-errors')
+            browserOptions.add_argument('--disable-infobars')
+            browserOptions.add_argument('--window-size=1920,1080')
+            browserOptions.add_argument('--start-maximized')
+            browserOptions.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36')
             
             # config: headless
             if 'headless' in config and config['headless']:
-                self._options.add_argument('--headless')
+                browserInitialArgs["headless"] = True
+                browserInitialArgs["enable_cdp_events"] = True
+                browserOptions.add_argument('--headless')
+            
+            ## instantiate browser
+            if 'chrome_version' in config and config['chrome_version']:
+                browserInitialArgs["version_main"] = config['chrome_version']
 
-            ## main config
-            self._browser = webdriver.Chrome(options=self._options)
+            browserInitialArgs["options"] = browserOptions
 
-            # extra browser configurations to avoid selenium detection
-            self._browser.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => false})")
+            self._browser = webdriver.Chrome(**browserInitialArgs)
             
             # config: time to wait before trigger timeoutException
             default_timeout = 30
@@ -415,7 +421,10 @@ class BrowserManager:
             if iframe_captcha_checkbox is not None:
                 self._browser.switch_to.frame(iframe_captcha_checkbox)
                 check_trigger = self.get(reCaptcha_checkbox_selector)
-                check_trigger.click_safe()
+                try:
+                    check_trigger.click_safe()
+                except AttributeError:
+                    check_trigger.click()
                 reCaptcha_checkbox_triggered = True
 
             # we will look for a captcha modal opened
@@ -440,7 +449,10 @@ class BrowserManager:
                     except TimeoutException:
                         audio_btn = self.get(reCaptcha_audio_button_alt_selector)
 
-                    audio_btn.click_safe()
+                    try:
+                        audio_btn.click_safe()
+                    except AttributeError:
+                        audio_btn.click()
                 except Exception as e:
                     # There is no reCaptcha
                     logging.info(f"couldn't access a previous WebElement. {str(e)}")
