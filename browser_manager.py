@@ -135,6 +135,10 @@ class BrowserManager:
 
     def close_current_tab(self):
         self._browser.close()
+        try:
+            self._browser.switch_to.window(self._browser.window_handles[-1])
+        except Exception:
+            pass
     
     def history(self, steps: int):
         """
@@ -254,7 +258,7 @@ class BrowserManager:
     def new_tab(self, url = None):
         """
         Opens a new tab in the browser with the initial URL provided in the `BrowserManager`
-        instance and switches to the newly created tab, closing the current tab later.
+        instance and switches to the newly created tab.
 
         Returns:
             None
@@ -262,35 +266,15 @@ class BrowserManager:
 
         # Open a new tab with the specified URL
         url_aux = self._initial_url if url == None else url
-        self._browser.execute_script("window.open('" + url_aux + "');")
+        try:
+            self._browser.execute_cdp_cmd('Target.createTarget', {'url': url_aux})
+        except Exception:
+            self._browser.execute_script("window.open('" + url_aux + "');")
 
         # Switch to the context of the new tab
         self._browser.switch_to.window(self._browser.window_handles[-1])
 
-        # Get the current window
-        current_window_tab_handle = self._browser.current_window_handle
-
-        # Close all tabs except for the current one
-        for window_tab_handle in self._browser.window_handles:
-            if window_tab_handle != current_window_tab_handle:
-                self._browser.switch_to.window(window_tab_handle)
-                self._browser.close()
-
-        # Switch to the context of the main window
-        self._browser.switch_to.window(current_window_tab_handle)
-
         return
-
-   
-        """
-        Executes some string-supplied JS code on the current page of the browser instance.
-
-        Returns:
-            None
-        """
-
-        # Execute supplied JS code
-        self._browser.execute_script(script)
 
     def go(self, url: str) -> None:
         """
