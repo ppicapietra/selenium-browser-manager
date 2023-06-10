@@ -55,8 +55,8 @@ class BrowserManager:
                     browserOptions.add_argument(arg)
             # stablish general preferences to improve scrapping
             browserOptions.add_argument('--lang=en-US')
-            browserOptions.add_argument('--blink-settings=imagesEnabled=true') # don't load images. Faster results
-            browserOptions.add_argument('--disable-popup-blocking') # allow new tabs
+            browserOptions.add_argument('--blink-settings=imagesEnabled=true')
+            # browserOptions.add_argument('--disable-popup-blocking') # allow new tabs
             browserOptions.add_argument('--no-sandbox')
             browserOptions.add_argument('--disable-dev-shm-usage')
             browserOptions.add_argument('--disable-extensions')
