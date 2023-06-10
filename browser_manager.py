@@ -105,9 +105,15 @@ class BrowserManager:
         elif css_regex.search(selector_string):
             return By.CSS_SELECTOR
             
+    @staticmethod
     @property
-    def EC(self):
+    def EC():
         return EC
+    
+    @staticmethod
+    @property
+    def By():
+        return By
 
     @property
     def driver(self) -> webdriver.Chrome:
