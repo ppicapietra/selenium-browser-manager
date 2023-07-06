@@ -445,8 +445,12 @@ class BrowserManager:
                         audio_btn.click()
                 except Exception as e:
                     # There is no reCaptcha
-                    logging.info(f"couldn't access a previous WebElement. {str(e)}")
-                    pass
+                    error_msg = str(e)
+                    error_msg_without_trace = error_msg.split('Stacktrace:')[0].strip()
+                    logging.info(f"couldn't switch to frame. {str(error_msg_without_trace)}")
+                    self.timeout = original_timeout_value
+                    self._browser.switch_to.default_content()
+                    return True
 
             if not reCaptcha_iframe_founded:
                 # no reCatptcha iframe founded

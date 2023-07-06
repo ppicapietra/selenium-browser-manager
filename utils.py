@@ -1,5 +1,3 @@
-import usaddress
-import os
 import time
 import random
 import shutil
